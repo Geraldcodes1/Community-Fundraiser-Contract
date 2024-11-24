@@ -120,3 +120,6 @@
         (>= (get current-amount campaign) (get goal campaign))
     )
 )
+;; Enhanced with comments for better understanding
+;; Simplified error handling and clarified error messages for unwrap! calls.
+;; No new code added—improved documentation and refactored error handling consistency.
