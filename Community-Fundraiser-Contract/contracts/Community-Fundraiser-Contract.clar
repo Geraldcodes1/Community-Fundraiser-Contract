@@ -101,3 +101,22 @@
         (ok true)
     )
 )
+;; Get campaign details
+(define-read-only (get-campaign (campaign-id uint))
+    (map-get? campaigns { campaign-id: campaign-id })
+)
+
+;; Get donation amount for a specific donor
+(define-read-only (get-donation (campaign-id uint) (donor principal))
+    (map-get? donations { campaign-id: campaign-id, donor: donor })
+)
+
+;; Check if campaign goal is reached
+(define-read-only (is-goal-reached (campaign-id uint))
+    (let
+        (
+            (campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) (err u404)))
+        )
+        (>= (get current-amount campaign) (get goal campaign))
+    )
+)
