@@ -78,3 +78,26 @@
         (ok true)
     )
 )
+(define-public (withdraw-funds (campaign-id uint))
+    (let
+        (
+            (campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) (err u404)))
+            (owner (get owner campaign))
+            (current-amount (get current-amount campaign))
+            (goal (get goal campaign))
+        )
+        (asserts! (is-eq tx-sender owner) ERR-NOT-OWNER)
+        (asserts! (>= current-amount goal) ERR-GOAL-REACHED)
+        
+        ;; Transfer all funds to campaign owner
+        (try! (as-contract (stx-transfer? current-amount tx-sender owner)))
+        
+        ;; Deactivate campaign
+        (map-set campaigns
+            { campaign-id: campaign-id }
+            (merge campaign { is-active: false })
+        )
+        
+        (ok true)
+    )
+)
