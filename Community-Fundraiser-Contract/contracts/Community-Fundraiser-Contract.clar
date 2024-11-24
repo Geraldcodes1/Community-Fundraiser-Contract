@@ -47,3 +47,34 @@
         (ok campaign-id)
     )
 )
+(define-public (donate (campaign-id uint) (amount uint))
+    (let
+        (
+            (campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) (err u404)))
+            (current-amount (get current-amount campaign))
+            (goal (get goal campaign))
+            (is-active (get is-active campaign))
+            (end-block (get end-block campaign))
+        )
+        (asserts! is-active ERR-CAMPAIGN-INACTIVE)
+        (asserts! (<= block-height end-block) ERR-DEADLINE-PASSED)
+        (asserts! (< current-amount goal) ERR-GOAL-REACHED)
+        
+        ;; Transfer STX from sender to contract
+        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        
+        ;; Update campaign amount
+        (map-set campaigns
+            { campaign-id: campaign-id }
+            (merge campaign { current-amount: (+ current-amount amount) })
+        )
+        
+        ;; Record donation
+        (map-set donations
+            { campaign-id: campaign-id, donor: tx-sender }
+            { amount: (default-to u0 (get amount (map-get? donations { campaign-id: campaign-id, donor: tx-sender }))) }
+        )
+        
+        (ok true)
+    )
+)
