@@ -149,4 +149,60 @@
         (ok true)
     )
 )
+(define-public (withdraw-funds (campaign-id uint))
+    (let
+        (
+            (campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) (err u404)))
+            (owner (get owner campaign))
+            (current-amount (get current-amount campaign))
+            (goal (get goal campaign))
+        )
+        (asserts! (is-eq tx-sender owner) ERR-NOT-OWNER)
+        (asserts! (>= current-amount goal) ERR-GOAL-REACHED)
+        
+        (try! (as-contract (stx-transfer? current-amount tx-sender owner)))
+        
+        (map-set campaigns
+            { campaign-id: campaign-id }
+            (merge campaign { is-active: false })
+        )
+        
+        (ok true)
+    )
+)
+
+(define-public (extend-deadline (campaign-id uint) (extension-blocks uint) (reason (string-ascii 200)))
+    (let
+        (
+            (campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) (err u404)))
+            (deadline-info (default-to 
+                { 
+                    extension-count: u0,
+                    original-end-block: (get end-block campaign),
+                    reason: ""
+                }
+                (map-get? campaign-deadlines { campaign-id: campaign-id })
+            ))
+        )
+        (asserts! (is-eq tx-sender (get owner campaign)) ERR-NOT-OWNER)
+        (asserts! (< (get extension-count deadline-info) u2) ERR-EXTENSION-LIMIT)
+        (asserts! (>= (get end-block campaign) block-height) ERR-DEADLINE-PASSED)
+        
+        (map-set campaigns
+            { campaign-id: campaign-id }
+            (merge campaign { end-block: (+ (get end-block campaign) extension-blocks) })
+        )
+        
+        (map-set campaign-deadlines
+            { campaign-id: campaign-id }
+            {
+                extension-count: (+ (get extension-count deadline-info) u1),
+                original-end-block: (get original-end-block deadline-info),
+                reason: reason
+            }
+        )
+        
+        (ok true)
+    )
+)
 
