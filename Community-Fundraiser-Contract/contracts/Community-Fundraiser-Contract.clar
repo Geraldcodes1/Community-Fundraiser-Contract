@@ -1,3 +1,7 @@
+;; Title: Community Fundraiser
+;; Version: 1.0
+;; Description: A community-driven fundraising platform with campaign management, donor tracking, and collaboration features
+
 ;; Storage
 (define-map campaigns
     { campaign-id: uint }
@@ -62,7 +66,17 @@
 
 ;; Error constants
 (define-constant ERR-NOT-OWNER (err u100))
-(define-constant ERR-CAMPAI
+(define-constant ERR-CAMPAIGN-INACTIVE (err u101))
+(define-constant ERR-GOAL-REACHED (err u102))
+(define-constant ERR-DEADLINE-PASSED (err u103))
+(define-constant ERR-UNAUTHORIZED (err u104))
+(define-constant ERR-EXTENSION-LIMIT (err u105))
+(define-constant ERR-INVALID-EXTENSION (err u106))
+(define-constant ERR-ALREADY-COLLABORATOR (err u107))
+(define-constant ERR-NOT-COLLABORATOR (err u108))
+(define-constant ERR-INSUFFICIENT-PERMISSIONS (err u109))
+
+;; Public functions
 (define-public (create-campaign (goal uint) (title (string-ascii 50)) (description (string-ascii 500)) (duration uint))
     (let
         (
@@ -85,6 +99,7 @@
         (ok campaign-id)
     )
 )
+
 (define-public (donate (campaign-id uint) (amount uint))
     (let
         (
@@ -149,6 +164,7 @@
         (ok true)
     )
 )
+
 (define-public (withdraw-funds (campaign-id uint))
     (let
         (
@@ -205,6 +221,7 @@
         (ok true)
     )
 )
+
 (define-public (set-campaign-tags 
     (campaign-id uint) 
     (new-tags (list 5 (string-ascii 20))) 
@@ -273,6 +290,50 @@
         )
         
         (ok true)
+    )
+)
+
+;; Read-only functions
+(define-read-only (get-campaign (campaign-id uint))
+    (map-get? campaigns { campaign-id: campaign-id })
+)
+
+(define-read-only (get-donation (campaign-id uint) (donor principal))
+    (map-get? donations { campaign-id: campaign-id, donor: donor })
+)
+
+(define-read-only (get-deadline-info (campaign-id uint))
+    (map-get? campaign-deadlines { campaign-id: campaign-id })
+)
+
+(define-read-only (get-campaign-tags (campaign-id uint))
+    (map-get? campaign-tags { campaign-id: campaign-id })
+)
+
+(define-read-only (get-donor-history (campaign-id uint) (donor principal))
+    (map-get? donor-history { campaign-id: campaign-id, donor: donor })
+)
+
+(define-read-only (get-collaborator-info (campaign-id uint) (collaborator principal))
+    (map-get? campaign-collaborators { campaign-id: campaign-id, collaborator: collaborator })
+)
+
+(define-read-only (is-goal-reached (campaign-id uint))
+    (let
+        (
+            (campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) (err u404)))
+            (current-amount (get current-amount campaign))
+            (goal (get goal campaign))
+        )
+        (ok (>= current-amount goal))
+    )
+)
+
+;; Private functions
+(define-private (has-permission (campaign-id uint) (required-permission (string-ascii 20)))
+    (match (map-get? campaign-collaborators { campaign-id: campaign-id, collaborator: tx-sender })
+        collaborator-info (is-some (index-of (get permissions collaborator-info) required-permission))
+        false
     )
 )
 
