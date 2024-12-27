@@ -63,3 +63,26 @@
 ;; Error constants
 (define-constant ERR-NOT-OWNER (err u100))
 (define-constant ERR-CAMPAI
+(define-public (create-campaign (goal uint) (title (string-ascii 50)) (description (string-ascii 500)) (duration uint))
+    (let
+        (
+            (campaign-id (var-get next-campaign-id))
+            (end-block (+ block-height duration))
+        )
+        (map-set campaigns
+            { campaign-id: campaign-id }
+            {
+                owner: tx-sender,
+                goal: goal,
+                current-amount: u0,
+                title: title,
+                description: description,
+                end-block: end-block,
+                is-active: true
+            }
+        )
+        (var-set next-campaign-id (+ campaign-id u1))
+        (ok campaign-id)
+    )
+)
+
