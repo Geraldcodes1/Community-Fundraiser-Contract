@@ -85,4 +85,68 @@
         (ok campaign-id)
     )
 )
+(define-public (donate (campaign-id uint) (amount uint))
+    (let
+        (
+            (campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) (err u404)))
+            (current-amount (get current-amount campaign))
+            (goal (get goal campaign))
+            (is-active (get is-active campaign))
+            (end-block (get end-block campaign))
+        )
+        (asserts! is-active ERR-CAMPAIGN-INACTIVE)
+        (asserts! (<= block-height end-block) ERR-DEADLINE-PASSED)
+        (asserts! (< current-amount goal) ERR-GOAL-REACHED)
+        
+        ;; Transfer STX from sender to contract
+        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        
+        ;; Update campaign amount
+        (map-set campaigns
+            { campaign-id: campaign-id }
+            (merge campaign { current-amount: (+ current-amount amount) })
+        )
+        
+        ;; Record donation
+        (map-set donations
+            { campaign-id: campaign-id, donor: tx-sender }
+            { amount: (default-to u0 (get amount (map-get? donations { campaign-id: campaign-id, donor: tx-sender }))) }
+        )
+        
+        (ok true)
+    )
+)
+
+(define-public (donate-with-message (campaign-id uint) (amount uint) (message (optional (string-ascii 100))))
+    (let
+        (
+            (campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) (err u404)))
+            (current-history (default-to
+                {
+                    donations: (list ),
+                    total-amount: u0,
+                    last-donation: u0
+                }
+                (map-get? donor-history { campaign-id: campaign-id, donor: tx-sender })
+            ))
+            (new-donation {
+                amount: amount,
+                block: block-height,
+                message: message
+            })
+        )
+        (try! (donate campaign-id amount))
+        
+        (map-set donor-history
+            { campaign-id: campaign-id, donor: tx-sender }
+            {
+                donations: (unwrap! (as-max-len? (append (get donations current-history) new-donation) u10) (err u404)),
+                total-amount: (+ (get total-amount current-history) amount),
+                last-donation: block-height
+            }
+        )
+        
+        (ok true)
+    )
+)
 
