@@ -1,7 +1,7 @@
 [project]
 name = "Community-Fundraiser-Contract"
 authors = []
-description = ""
+description = "A community-driven fundraising platform with enhanced features"
 telemetry = true
 requirements = []
 [contracts.Community-Fundraiser-Contract]
@@ -20,3 +20,4 @@ strict = false
 trusted_sender = false
 trusted_caller = false
 callee_filter = false
+
